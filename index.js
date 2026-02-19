@@ -8,7 +8,7 @@ parser.on('data', (data) => {
     try {
         if (data.startsWith("0952-")){
             console.log(data);
-            port.write("ok")
+            port.write("ok\n")
         }
     } catch (e) {
         console.log("Raw MCU Data:", data);
