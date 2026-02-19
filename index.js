@@ -1,28 +1,20 @@
-const RPCClient = require('./rpc_client');
+// app.js
+const RPCClient = require('./rpc-client');  // use your existing rpc-client.js
 
 const client = new RPCClient();
 
 client.on('connected', () => {
-  console.log('Bridge ready – listening for MCU notifications');
-});
+  console.log('Connected – starting to poll MCU millis');
 
-client.on('notification', (method, ...params) => {
-  const message = params[0] || '(no message)';
-  console.log(`[NOTIFY] ${method}: "${message}"`);
-
-  // Reply "ok" using boolean (matches MCU callback)
-  client.call('reply', [true], (err) => {
-    if (err) {
-      console.error('Reply failed:', err);
-    } else {
-      console.log('Sent reply: true ("ok")');
+  // Poll every 3 seconds
+  setInterval(async () => {
+    try {
+      const millis = await client.callPromise('getMillis', []);
+      console.log(`MCU millis: ${millis} ms`);
+    } catch (err) {
+      console.error('Poll failed:', err.message || err);
     }
-  });
+  }, 3000);
 });
 
-// Graceful shutdown
-process.on('SIGINT', () => {
-  console.log('Shutting down...');
-  client.close();
-  process.exit(0);
-});
+client.on('error', (err) => console.error('Client error:', err));
