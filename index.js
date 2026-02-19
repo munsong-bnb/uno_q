@@ -6,26 +6,13 @@ const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
 parser.on('data', (data) => {
     try {
-        // Try to parse as JSON if it looks like it
-        if (data.startsWith('{')) {
-            const json = JSON.parse(data);
-            console.log("Sensor Data:", json);
-        } else {
-            console.log("MCU String:", data);
+        if (data.startsWith("0952-")){
+            port.write("ok")
         }
     } catch (e) {
         console.log("Raw MCU Data:", data);
     }
-});
-
-// Function to send structured commands
-function sendCommand(cmd, value) {
-    const payload = JSON.stringify({ command: cmd, val: value });
-    port.write(payload + '\n');
-}
-
-// Example: Send a 'hey' command every 5 seconds
-setInterval(() => sendCommand("greeting", "hey"), 5000);
+})
 
 
 
