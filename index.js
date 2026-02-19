@@ -7,6 +7,7 @@ const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 parser.on('data', (data) => {
     try {
         if (data.startsWith("0952-")){
+            console.log(data);
             port.write("ok")
         }
     } catch (e) {
