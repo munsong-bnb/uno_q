@@ -1,42 +1,39 @@
 const net = require('net');
 const msgpack = require('msgpack-lite');
 
-// The Uno Q internal router socket path
 const SOCKET_PATH = '/run/arduino-router.sock';
 
 const client = net.createConnection({ path: SOCKET_PATH }, () => {
-    console.log('Connected to Bridge Socket');
+    console.log('Connected to Uno Q Router');
 });
 
 client.on('data', (buffer) => {
-    try {
-        const decoded = msgpack.decode(buffer);
-        
-        // MessagePack-RPC Notification Format: [Type(2), MethodName, ParamsArray]
-        if (decoded[0] === 2) {
-            const methodName = decoded[1];
-            const params = decoded[2];
+    const decoder = msgpack.createDecodeStream();
+    
+    decoder.on("data", (decoded) => {
+        // Log what we got from MCU
+        if (decoded[0] === 2 && decoded[1] === "mcu_greeting") {
+            console.log(`MCU says: ${decoded[2]}`);
 
-            if (methodName === "mcu_greeting") {
-                console.log(`Received from MCU: ${params[0]}`);
-
-                // Now send "hey" back to the MCU
-                // RPC Request Format: [Type(0), MsgID, MethodName, ParamsArray]
-                const msgId = Math.floor(Math.random() * 1000);
-                const response = msgpack.encode([0, msgId, "printToSerial", ["hey"]]);
-                
-                client.write(response);
-                console.log("Sent 'hey' back to MCU.");
-            }
+            // BUILD THE REPLY CAREFULLY
+            const type = 0;             // 0 = Request
+            const msgId = Math.floor(Math.random() * 1000);
+            const method = "printToSerial";
+            const params = ["hey"];     // Parameters MUST be in an array
+            
+            // The whole packet MUST be an array: [0, id, "name", ["args"]]
+            const packet = [type, msgId, method, params];
+            const encodedPacket = msgpack.encode(packet);
+            
+            client.write(encodedPacket);
+            console.log("Sent 'hey' back to MCU.");
         }
-    } catch (err) {
-        // Sometimes partial packets arrive; we ignore decoding errors in this simple demo
-    }
+    });
+
+    decoder.write(buffer);
 });
 
-client.on('error', (err) => {
-    console.error("Socket Error:", err.message);
-});
+client.on('error', (err) => console.error("Socket Error:", err));
 
 
 
