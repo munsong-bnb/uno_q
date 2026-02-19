@@ -1,12 +1,8 @@
 const msgpack = require('msgpack-lite');
 const net = require('net');
 
-// The Uno Q internal router usually listens on a specific port or socket
-const BRIDGE_PORT = 5001; // Default port for the router service
-const BRIDGE_HOST = '127.0.0.1';
-
-const client = net.createConnection({ port: BRIDGE_PORT, host: BRIDGE_HOST }, () => {
-    console.log('Connected to Arduino Bridge Router');
+const client = net.createConnection({ path: '/run/arduino-router.sock' }, () => {
+    console.log('Connected to Arduino Bridge via Unix Socket');
 });
 
 // Function to call the MCU 'toggleLED'
