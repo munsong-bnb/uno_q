@@ -1,17 +1,21 @@
+const axios = require("axios")
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 
 const port = new SerialPort({ path: '/dev/ttyHS1', baudRate: 115200 });
 const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
-parser.on('data', (data) => {
+parser.on('data', async (data) => {
     try {
         if (data.startsWith("0952-")){
-            console.log(data);
+            console.log(data)
+            const x = Date.now()
+            const res = await axios.get("https://api.chikimgroup.com/v1/ping")
+            console.log(Date.now()-x)
             port.write("ok\n")
         }
     } catch (e) {
-        console.log("Raw MCU Data:", data);
+        console.log("Raw MCU Data:", data)
     }
 })
 
