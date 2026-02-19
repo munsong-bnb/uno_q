@@ -1,39 +1,31 @@
-const net = require('net');
-const msgpack = require('msgpack-lite');
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
 
-const SOCKET_PATH = '/run/arduino-router.sock';
+const port = new SerialPort({ path: '/dev/ttyHS1', baudRate: 115200 });
+const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
-const client = net.createConnection({ path: SOCKET_PATH }, () => {
-    console.log('Connected to Uno Q Router');
-});
-
-client.on('data', (buffer) => {
-    const decoder = msgpack.createDecodeStream();
-    
-    decoder.on("data", (decoded) => {
-        // Log what we got from MCU
-        if (decoded[0] === 2 && decoded[1] === "mcu_greeting") {
-            console.log(`MCU says: ${decoded[2]}`);
-
-            // BUILD THE REPLY CAREFULLY
-            const type = 0;             // 0 = Request
-            const msgId = Math.floor(Math.random() * 1000);
-            const method = "printToSerial";
-            const params = ["hey"];     // Parameters MUST be in an array
-            
-            // The whole packet MUST be an array: [0, id, "name", ["args"]]
-            const packet = [type, msgId, method, params];
-            const encodedPacket = msgpack.encode(packet);
-            
-            client.write(encodedPacket);
-            console.log("Sent 'hey' back to MCU.");
+parser.on('data', (data) => {
+    try {
+        // Try to parse as JSON if it looks like it
+        if (data.startsWith('{')) {
+            const json = JSON.parse(data);
+            console.log("Sensor Data:", json);
+        } else {
+            console.log("MCU String:", data);
         }
-    });
-
-    decoder.write(buffer);
+    } catch (e) {
+        console.log("Raw MCU Data:", data);
+    }
 });
 
-client.on('error', (err) => console.error("Socket Error:", err));
+// Function to send structured commands
+function sendCommand(cmd, value) {
+    const payload = JSON.stringify({ command: cmd, val: value });
+    port.write(payload + '\n');
+}
+
+// Example: Send a 'hey' command every 5 seconds
+setInterval(() => sendCommand("greeting", "hey"), 5000);
 
 
 
