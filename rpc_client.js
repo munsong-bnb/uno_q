@@ -9,14 +9,12 @@ class RPCClient extends EventEmitter {
     this.socketPath = socketPath;
     this.msgid = 0;
     this.pending = new Map();
-    
-    // Use a codec with preset types for better performance/compatibility
     this.codec = msgpack.createCodec({ preset: true });
 
     this.socket = net.createConnection(this.socketPath);
-    
+
     this.socket.on('connect', () => {
-      console.log(`Connected to Arduino Bridge router at ${this.socketPath}`);
+      console.log(`Connected to router: ${this.socketPath}`);
       this.emit('connected');
     });
 
@@ -26,7 +24,7 @@ class RPCClient extends EventEmitter {
     });
 
     this.socket.on('close', () => {
-      console.log('Connection to router closed');
+      console.log('Connection closed');
       this.emit('close');
     });
 
@@ -34,56 +32,55 @@ class RPCClient extends EventEmitter {
   }
 
   handleData(data) {
-    try {
-      // MessagePack can return a single object or array of messages
-      const messages = msgpack.decode(data, { codec: this.codec });
+    // Debug: show everything that arrives
+    console.log('[RAW received]', data.length, 'bytes →', data.toString('hex'));
 
-      // We expect responses in the form: [1, msgid, error, result]
-      if (Array.isArray(messages) && messages[0] === 1) {
-        const [, msgid, error, result] = messages;
-        const callback = this.pending.get(msgid);
-        if (callback) {
-          callback(error, result);
-          this.pending.delete(msgid);
+    try {
+      let messages = msgpack.decode(data, { codec: this.codec });
+      if (!Array.isArray(messages)) messages = [messages];
+
+      console.log('[DECODED]', JSON.stringify(messages, null, 2));
+
+      for (const msg of messages) {
+        if (Array.isArray(msg)) {
+          const type = msg[0];
+
+          if (type === 1) {
+            // Response: [1, msgid, error, result]
+            const [, msgid, error, result] = msg;
+            const cb = this.pending.get(msgid);
+            if (cb) {
+              cb(error, result);
+              this.pending.delete(msgid);
+            }
+          } else if (type === 2) {
+            // Notification: [2, method, params...]
+            const [, method, ...params] = msg;
+            this.emit('notification', method, ...params);
+            this.emit(`notification:${method}`, ...params);
+          }
         }
       }
-      // You could also handle notifications or other message types here in the future
     } catch (err) {
-      console.error('Failed to decode MessagePack data:', err);
+      console.error('Decode error:', err.message);
     }
   }
 
-  /**
-   * Call a remote method exposed by the MCU (or another client)
-   * @param {string} method - e.g. "toggleLED"
-   * @param {Array} params - array of arguments, e.g. [true]
-   * @param {function} callback - (err, result) => {}
-   */
   call(method, params = [], callback) {
     const msgid = this.msgid++;
-    const request = [0, msgid, method, params];  // [type, msgid, method, params]
-
-    try {
-      const encoded = msgpack.encode(request, { codec: this.codec });
-      this.pending.set(msgid, callback);
-      this.socket.write(encoded);
-    } catch (err) {
-      console.error('Failed to encode request:', err);
-      if (callback) callback(err);
-    }
+    const request = [0, msgid, method, params];
+    const encoded = msgpack.encode(request, { codec: this.codec });
+    this.pending.set(msgid, callback);
+    this.socket.write(encoded);
   }
 
-  /**
-   * Register a method so the MCU can call back into Node.js
-   * @param {string} methodName
-   */
-  register(methodName) {
-    this.call('$/register', [methodName], (err, res) => {
-      if (err) {
-        console.error(`Failed to register method "${methodName}":`, err);
-      } else {
-        console.log(`Successfully registered method: ${methodName}`);
-      }
+  // Promise version for cleaner async/await
+  callPromise(method, params = []) {
+    return new Promise((resolve, reject) => {
+      this.call(method, params, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
     });
   }
 

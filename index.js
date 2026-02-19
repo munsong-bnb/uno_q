@@ -1,34 +1,26 @@
-// app.js
-const RPCClient = require('./rpc_client');  // or './rpc-client.js' if you prefer explicit
+const RPCClient = require('./rpc_client');
 
-const client = new RPCClient();  // uses default socket path
+const client = new RPCClient();
 
-// Optional: wait for connection before doing calls
 client.on('connected', () => {
-  console.log('Ready to make RPC calls');
-
-  // Example: toggle LED every 2 seconds
-  setInterval(() => {
-    client.call('toggleLED', [true], (err, res) => {
-      if (err) console.error('Failed to turn LED on:', err);
-      else console.log('LED ON →', res);
-    });
-
-    setTimeout(() => {
-      client.call('toggleLED', [false], (err, res) => {
-        if (err) console.error('Failed to turn LED off:', err);
-        else console.log('LED OFF →', res);
-      });
-    }, 1000);
-  }, 2000);
+  console.log('Bridge ready – listening for MCU notifications');
 });
 
-// Optional: handle errors globally
-client.on('error', (err) => {
-  console.error('RPC Client error:', err);
+client.on('notification', (method, ...params) => {
+  const message = params[0] || '(no message)';
+  console.log(`[NOTIFY] ${method}: "${message}"`);
+
+  // Reply "ok" using boolean (matches MCU callback)
+  client.call('reply', [true], (err) => {
+    if (err) {
+      console.error('Reply failed:', err);
+    } else {
+      console.log('Sent reply: true ("ok")');
+    }
+  });
 });
 
-// Graceful shutdown (Ctrl+C)
+// Graceful shutdown
 process.on('SIGINT', () => {
   console.log('Shutting down...');
   client.close();
