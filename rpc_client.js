@@ -34,7 +34,6 @@ class RPCClient extends EventEmitter {
   }
 
   handleData(data) {
-    console.log(data)
     try {
       // MessagePack can return a single object or array of messages
       const messages = msgpack.decode(data, { codec: this.codec });
