@@ -1,0 +1,16 @@
+{
+  "name": "uno_q",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Biaksang Munsong",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "events": "^3.3.0",
+    "msgpack-lite": "^0.1.26",
+    "net": "^1.0.2"
+  }
+}
