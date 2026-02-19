@@ -1,4 +1,4 @@
-const RPCClient = require('./rpc-client');  // or './rpc-client.js' if you prefer explicit
+const RPCClient = require('./rpc_client');  // or './rpc-client.js' if you prefer explicit
 
 const client = new RPCClient();  // uses default socket path
 
