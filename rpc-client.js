@@ -82,7 +82,7 @@ class RPCClient extends EventEmitter {
         else resolve(result);
       });
     });
-  }
+    }
 
   close() {
     this.socket.end();
